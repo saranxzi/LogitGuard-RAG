@@ -1,0 +1,37 @@
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python cache and byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Testing & Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Large raw datasets (downloaded & intermediate files)
+data/raw/
+data/ragtruth_clean.jsonl
+*.locks/
+.locks/
+
+# Temporary models / caches
+checkpoints/
+hf_cache/
+*.log
+
+make_git_commits.py

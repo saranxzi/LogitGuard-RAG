@@ -1,0 +1,29 @@
+model_name: "Qwen/Qwen2.5-1.5B-Instruct"
+fallback_model_name: "Qwen/Qwen2.5-0.5B-Instruct"
+dtype: "float16"
+attn_implementation: "sdpa"
+max_tokens: 3072
+chunk_size: 64
+seed: 42
+
+variant: "ccla"          # ccla (ADR-0001 Upgraded Core) | core | entropy | margin | surprisal
+agg: "hybrid"            # hybrid (BPE onset-weighted top-k) | mean | max
+mask_mode: "soft"        # soft | hard | uniform
+weights:
+  entity: 1.0
+  other: 0.1
+max_span_gap: 2
+max_span_tokens: 32      # Max tokens per candidate span to prevent paragraph-spanning collapse
+
+tau: 0.58                # Calibrated tau: optimal trade-off between false alarms and recall
+
+paths:
+  raw_dir: "data/raw"
+  clean_data: "data/ragtruth_clean.jsonl"
+  perturb_data: "data/perturbations.jsonl"
+  demo_cache: "data/cached_demo_samples.json"
+  results_dir: "results"
+  tau_file: "results/tau.json"
+  main_table: "results/main_table.csv"
+  ablation_table: "results/ablation_table.csv"
+  latency_table: "results/latency.csv"

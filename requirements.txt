@@ -1,0 +1,24 @@
+# Core Scientific & Data
+numpy>=1.26.4
+pandas>=2.2.0
+scipy>=1.13.0
+scikit-learn>=1.5.0
+pyyaml>=6.0.1
+tqdm>=4.66.0
+pytest>=8.3.0
+requests>=2.31.0
+
+# NLP & Linguistics
+spacy>=3.7.4
+sentencepiece>=0.2.0
+protobuf>=5.28.0
+
+# API & Web
+fastapi>=0.115.0
+uvicorn>=0.32.0
+pydantic>=2.9.0
+
+# ML Framework (PyTorch & HuggingFace)
+transformers>=4.48.0
+accelerate>=1.2.0
+datasets>=3.2.0
