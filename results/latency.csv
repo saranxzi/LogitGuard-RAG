@@ -1,0 +1,8 @@
+Component,Mean_ms,p95_ms,Extra_VRAM_MB
+Qwen-2.5-1.5B Forward Pass,14.1,16.5,0.0
+CCLA In-Place GPU Hook,1.9,2.3,0.0
+spaCy Syntactic Anchor Filter,2.2,2.8,0.0
+BPE Onset Span Aggregator,0.3,0.5,0.0
+LogitGuard Total Overhead,4.4,5.6,0.0
+LogitGuard Complete Pipeline,250.8,493.3,0.0
+Auxiliary LLM NLI Judge,3608.8,16394.6,320.0

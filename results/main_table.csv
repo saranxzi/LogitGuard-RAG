@@ -1,0 +1,7 @@
+Method,Paradigm,Precision,Recall,Micro-F1,Macro-F1,Accuracy,AUROC,Latency_Mean_ms,Latency_p95_ms,Extra_VRAM_MB
+Dynamic Fact Arbiter (Ground Truth),Ground Truth Reference,1.0,1.0,1.0,1.0,1.0,1.0,393.6,2627.5,0.0
+LogitGuard-RAG (Ours),Gray-Box CCLA (Ours),0.3608,0.2713,0.3097,0.5097,0.858,0.7206,250.8,493.3,0.0
+Auxiliary LLM NLI Judge,Black-Box NLI Judge,0.3515,0.2752,0.3087,0.5336,0.8553,0.6885,3608.8,16394.6,320.0
+Lexical & Entity Grounding,Black-Box Surface Match,0.2876,0.5039,0.3662,0.5107,0.7952,0.6966,34.9,89.5,0.0
+Raw Predictive Token Entropy,White-Box Token,0.1436,0.4302,0.2153,0.3454,0.6318,0.6606,249.8,492.8,0.0
+Min Concept Prob (1 - P_max),White-Box Token,0.1449,0.4264,0.2163,0.3343,0.6372,0.6451,249.7,492.4,0.0

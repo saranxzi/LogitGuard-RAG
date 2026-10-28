@@ -1,0 +1,265 @@
+[
+  {
+    "model": "Qwen/Qwen2.5-1.5B-Instruct (bfloat16)",
+    "total_questions": 320,
+    "total_time_s": 1379.24,
+    "methods": [
+      {
+        "method_id": "fact_arbiter",
+        "name": "Dynamic Fact Arbiter (Ground Truth)",
+        "tp": 258,
+        "fp": 0,
+        "tn": 1940,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "micro_f1": 1.0,
+        "macro_f1": 1.0,
+        "accuracy": 1.0,
+        "auroc": 1.0,
+        "far": 0.0,
+        "avg_latency_ms": 393.6,
+        "p95_latency_ms": 2627.5
+      },
+      {
+        "method_id": "logitguard",
+        "name": "LogitGuard-RAG (Ours)",
+        "tp": 70,
+        "fp": 124,
+        "tn": 1815,
+        "fn": 188,
+        "precision": 0.3608,
+        "recall": 0.2713,
+        "micro_f1": 0.3097,
+        "macro_f1": 0.5097,
+        "accuracy": 0.858,
+        "auroc": 0.7206,
+        "far": 0.064,
+        "avg_latency_ms": 250.8,
+        "p95_latency_ms": 493.3
+      },
+      {
+        "method_id": "nli_judge",
+        "name": "Auxiliary LLM NLI Judge",
+        "tp": 71,
+        "fp": 131,
+        "tn": 1808,
+        "fn": 187,
+        "precision": 0.3515,
+        "recall": 0.2752,
+        "micro_f1": 0.3087,
+        "macro_f1": 0.5336,
+        "accuracy": 0.8553,
+        "auroc": 0.6885,
+        "far": 0.0676,
+        "avg_latency_ms": 3608.8,
+        "p95_latency_ms": 16394.6
+      },
+      {
+        "method_id": "lexical_grounding",
+        "name": "Lexical & Entity Grounding",
+        "tp": 130,
+        "fp": 322,
+        "tn": 1617,
+        "fn": 128,
+        "precision": 0.2876,
+        "recall": 0.5039,
+        "micro_f1": 0.3662,
+        "macro_f1": 0.5107,
+        "accuracy": 0.7952,
+        "auroc": 0.6966,
+        "far": 0.1661,
+        "avg_latency_ms": 34.9,
+        "p95_latency_ms": 89.5
+      },
+      {
+        "method_id": "raw_entropy",
+        "name": "Raw Predictive Token Entropy",
+        "tp": 111,
+        "fp": 662,
+        "tn": 1277,
+        "fn": 147,
+        "precision": 0.1436,
+        "recall": 0.4302,
+        "micro_f1": 0.2153,
+        "macro_f1": 0.3454,
+        "accuracy": 0.6318,
+        "auroc": 0.6606,
+        "far": 0.3414,
+        "avg_latency_ms": 249.8,
+        "p95_latency_ms": 492.8
+      },
+      {
+        "method_id": "min_prob",
+        "name": "Min Concept Prob (1 - P_max)",
+        "tp": 110,
+        "fp": 649,
+        "tn": 1290,
+        "fn": 148,
+        "precision": 0.1449,
+        "recall": 0.4264,
+        "micro_f1": 0.2163,
+        "macro_f1": 0.3343,
+        "accuracy": 0.6372,
+        "auroc": 0.6451,
+        "far": 0.3347,
+        "avg_latency_ms": 249.7,
+        "p95_latency_ms": 492.4
+      }
+    ],
+    "categories": {
+      "ragtruth_gold": {
+        "fact_arbiter": {
+          "tp": 111,
+          "fp": 0,
+          "tn": 939,
+          "fn": 0
+        },
+        "logitguard": {
+          "tp": 48,
+          "fp": 57,
+          "tn": 882,
+          "fn": 63
+        },
+        "nli_judge": {
+          "tp": 27,
+          "fp": 36,
+          "tn": 903,
+          "fn": 84
+        },
+        "lexical_grounding": {
+          "tp": 73,
+          "fp": 141,
+          "tn": 798,
+          "fn": 38
+        },
+        "raw_entropy": {
+          "tp": 58,
+          "fp": 343,
+          "tn": 596,
+          "fn": 53
+        },
+        "min_prob": {
+          "tp": 56,
+          "fp": 329,
+          "tn": 610,
+          "fn": 55
+        }
+      },
+      "perturbation_pair": {
+        "fact_arbiter": {
+          "tp": 115,
+          "fp": 0,
+          "tn": 837,
+          "fn": 0
+        },
+        "logitguard": {
+          "tp": 13,
+          "fp": 66,
+          "tn": 771,
+          "fn": 102
+        },
+        "nli_judge": {
+          "tp": 14,
+          "fp": 53,
+          "tn": 784,
+          "fn": 101
+        },
+        "lexical_grounding": {
+          "tp": 48,
+          "fp": 181,
+          "tn": 656,
+          "fn": 67
+        },
+        "raw_entropy": {
+          "tp": 29,
+          "fp": 298,
+          "tn": 539,
+          "fn": 86
+        },
+        "min_prob": {
+          "tp": 34,
+          "fp": 300,
+          "tn": 537,
+          "fn": 81
+        }
+      },
+      "open_domain": {
+        "fact_arbiter": {
+          "tp": 23,
+          "fp": 0,
+          "tn": 121,
+          "fn": 0
+        },
+        "logitguard": {
+          "tp": 0,
+          "fp": 1,
+          "tn": 119,
+          "fn": 23
+        },
+        "nli_judge": {
+          "tp": 22,
+          "fp": 40,
+          "tn": 80,
+          "fn": 1
+        },
+        "lexical_grounding": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 120,
+          "fn": 23
+        },
+        "raw_entropy": {
+          "tp": 15,
+          "fp": 21,
+          "tn": 99,
+          "fn": 8
+        },
+        "min_prob": {
+          "tp": 13,
+          "fp": 19,
+          "tn": 101,
+          "fn": 10
+        }
+      },
+      "scaffolding_keys": {
+        "fact_arbiter": {
+          "tp": 9,
+          "fp": 0,
+          "tn": 43,
+          "fn": 0
+        },
+        "logitguard": {
+          "tp": 9,
+          "fp": 0,
+          "tn": 43,
+          "fn": 0
+        },
+        "nli_judge": {
+          "tp": 8,
+          "fp": 2,
+          "tn": 41,
+          "fn": 1
+        },
+        "lexical_grounding": {
+          "tp": 9,
+          "fp": 0,
+          "tn": 43,
+          "fn": 0
+        },
+        "raw_entropy": {
+          "tp": 9,
+          "fp": 0,
+          "tn": 43,
+          "fn": 0
+        },
+        "min_prob": {
+          "tp": 7,
+          "fp": 1,
+          "tn": 42,
+          "fn": 2
+        }
+      }
+    }
+  }
+]

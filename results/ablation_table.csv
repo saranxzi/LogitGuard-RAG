@@ -1,0 +1,7 @@
+Ablation Variant,Variant,Mask Mode,Tau,Span-F1,Delta Span-F1,AUROC
+Full LogitGuard-RAG (CCLA + BPE Onset),ccla,soft,0.62,0.438,—,0.802
+Ablation 1: w/o CCLA Contrastive Probe,core,soft,0.62,0.312,-0.126,0.710
+Ablation 2: w/o BPE Onset Pooling (Mean Pool),ccla,soft,0.62,0.345,-0.093,0.732
+Ablation 3: Uniform Token Weights (w/o Entity Filter),ccla,uniform,0.62,0.230,-0.208,0.744
+Ablation 4: Hard Binary Masking,ccla,hard,0.62,0.380,-0.058,0.765
+Ablation 5: Unweighted Raw Token Entropy,entropy,uniform,0.62,0.230,-0.208,0.744
