@@ -19,6 +19,9 @@ uvicorn>=0.32.0
 pydantic>=2.9.0
 
 # ML Framework (PyTorch & HuggingFace)
-transformers>=4.48.0
+# On an NVIDIA GPU install the CUDA build of torch first (RTX 50-series needs CUDA 12.8):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+torch>=2.7.0
+transformers>=4.56.0
 accelerate>=1.2.0
 datasets>=3.2.0

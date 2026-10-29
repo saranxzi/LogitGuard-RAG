@@ -33,5 +33,6 @@ data/ragtruth_clean.jsonl
 checkpoints/
 hf_cache/
 *.log
+*.pdf
 
 make_git_commits.py

@@ -226,7 +226,10 @@ class ExperimentSandbox:
             accuracy = round((tp + tn) / tot, 4) if tot > 0 else 1.0
 
             # Macro metrics
-            macro_f1 = round(float(np.mean(m_data["sample_f1s"])), 4) if m_data["sample_f1s"] else 0.0
+            # Macro-F1 = unweighted mean of the F1 of both classes (hallucinated, grounded)
+            f1_neg_den = 2 * tn + fn + fp
+            f1_neg = (2 * tn / f1_neg_den) if f1_neg_den > 0 else 0.0
+            macro_f1 = round((micro_f1 + f1_neg) / 2.0, 4)
             macro_prec = round(float(np.mean(m_data["sample_precs"])), 4) if m_data["sample_precs"] else 0.0
             macro_rec = round(float(np.mean(m_data["sample_recs"])), 4) if m_data["sample_recs"] else 0.0
 
@@ -237,11 +240,9 @@ class ExperimentSandbox:
                     precs, recs, _ = precision_recall_curve(m_data["y_true"], m_data["y_score"])
                     auprc = round(float(auc(recs, precs)), 4)
                 else:
-                    auroc = 1.0
-                    auprc = 1.0
-            except Exception:
-                auroc = 0.5
-                auprc = 0.5
+                    auroc = auprc = float("nan")  # undefined with a single class
+            except ValueError:
+                auroc = auprc = float("nan")
 
             avg_lat = round(float(np.mean(m_data["latencies"])), 1) if m_data["latencies"] else 0.0
             p95_lat = round(float(np.percentile(m_data["latencies"], 95)), 1) if m_data["latencies"] else 0.0
@@ -291,16 +292,11 @@ class ExperimentSandbox:
         lines = []
         lines.append("# Empirical Hallucination Detection Benchmark Report")
         lines.append(f"**Generated:** {time.strftime('%Y-%m-%d %H:%M:%S')}  ")
-        lines.append(f"**Hardware Environment:** NVIDIA GeForce RTX 5070 Laptop GPU (8GB VRAM), PyTorch 2.11, CUDA 12.8  ")
-        lines.append(f"**Benchmark Scope:** 100+ Evaluated Questions across RAGTruth Multi-Task, Perturbation Pairs, Open-Domain, and Scaffolding  \n")
+        total_q = sum(m_res.get("total_questions", 0) for m_res in all_model_results)
+        lines.append(f"**Benchmark Scope:** {total_q} evaluated questions  \n")
 
-        lines.append("## 1. Executive Summary & Core Findings\n")
-        lines.append("This report documents the empirical evaluation of **LogitGuard-RAG** against published baselines, auxiliary LLM judges, and lexical methods. "
-                     "Testing was conducted across a standardized multi-category benchmark suite comprising **110 diverse evaluation cases**.")
-        lines.append("")
-        lines.append("- **LogitGuard-RAG (Ours)** achieved the highest overall **F1 score and AUROC** while operating at **0.0 MB extra VRAM overhead** via fused GPU in-hook logit reductions.")
-        lines.append("- **Elimination of False Alarms:** Traditional token-entropy baselines triggered numerous false alarms on rare factual entities (`BackRub`, `1996`, `googol`) and formatting scaffolding headers (`Completion Year:`, `Height:`). LogitGuard's **Context-Contrastive Logit Attribution (CCLA)** and **syntactic entity weighting** reduced false positives by **>85%** compared to uncalibrated entropy.")
-        lines.append("- **Efficiency:** LogitGuard executed in single-pass forward time (<30 ms), **35× faster** than multi-sample LLM judges while delivering strictly deterministic token-level boundaries.\n")
+        lines.append("## 1. Summary\n")
+        lines.append("All numbers below are computed from this run; see the tables for per-method results.\n")
 
         lines.append("## 2. Multi-Paradigm Benchmark Shootout Table\n")
 
@@ -309,7 +305,7 @@ class ExperimentSandbox:
             n_q = m_res["total_questions"]
             tot_s = m_res["total_time_s"]
             lines.append(f"### Model: `{m_name}` ({n_q} Questions Evaluated in {tot_s}s)\n")
-            lines.append("| Detection Method | Paradigm | Precision | Recall | Micro-F1 | Macro-F1 | Accuracy | AUROC | Latency (Mean) | Latency (p95) | Extra VRAM |")
+            lines.append("| Detection Method | Paradigm | Precision | Recall | F1 (halluc.) | Macro-F1 | Accuracy | AUROC | Latency (Mean) | Latency (p95) | Extra VRAM |")
             lines.append("|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|")
 
             for m in m_res["methods"]:
@@ -332,11 +328,7 @@ class ExperimentSandbox:
                     "White-Box Token Entropy" if "entropy" in m["method_id"] else "White-Box Token Heuristic"
                 ))))
 
-                extra_vram = "0.0 MB" if "fact_arbiter" in m["method_id"] else (
-                    "0.0 MB (In-Place Fused)" if "logitguard" in m["method_id"] else (
-                    "+320 MB (+1,450 MB if Standalone)" if "nli" in m["method_id"] else (
-                    "0.0 MB (CPU)" if "lexical" in m["method_id"] else "0.0 MB"
-                )))
+                extra_vram = f"{m.get('extra_vram_mb', 0.0):.1f} MB"
 
                 lines.append(f"| {name} | {paradigm} | {prec} | {rec} | {micro_f1} | {macro_f1} | {acc} | {auroc} | {lat_mean} | {lat_p95} | {extra_vram} |")
             lines.append("\n")
@@ -352,21 +344,6 @@ class ExperimentSandbox:
                 lines.append(f"| {m['name']} | {m['tp']} | {m['fp']} | {m['tn']} | {m['fn']} |")
             lines.append("\n")
 
-        lines.append("## 4. Category-Specific Performance Analysis\n")
-        lines.append("Performance breakdown across the 4 primary benchmark categories:\n")
-        lines.append("1. **RAGTruth Multi-Task (160 items):** Real-world QA, Summarization, and Data-to-Text with human gold-annotated spans.")
-        lines.append("2. **Contrastive Perturbations (100 items):** Strictly paired grounded vs conflict statements isolating exact factual substitutions.")
-        lines.append("3. **Open-Domain Authoritative (40 items):** Historical, technological, and scientific facts audited via dynamic encyclopedia consensus.")
-        lines.append("4. **Scaffolding & Structural Keys (20 items):** Formatted Markdown tables, metadata headers, and colon labels verifying syntactic label protection.\n")
-
-        lines.append("## 5. Architectural & Resource Profile\n")
-        lines.append("| Architecture Layer | Hardware Allocation | Latency Overhead | Memory Footprint |")
-        lines.append("|:---|:---|:---:|:---:|")
-        lines.append("| **Primary Engine (Qwen-2.5-1.5B)** | `cuda:0` (FP16/BF16 SDPA) | ~14 ms / pass | ~2,950 MB |")
-        lines.append("| **CCLA Dual-Stream Forward Hook** | `cuda:0` (In-Place Fused) | < 12 ms | 0.0 MB |")
-        lines.append("| **Auxiliary LLM NLI Judge** | `cuda:0` (Cross-Attention) | ~450 ms | +320 MB (+1,450 MB if Standalone) |")
-        lines.append("| **Dynamic Fact Arbiter** | Async Background Engine | ~15 ms | < 25 MB RAM |")
-        lines.append("| **Token Logit Microscope** | Client UI Vector Buffer | 0 ms (Cached) | 0.0 MB GPU |")
         lines.append("\n---\n")
 
         report_content = "\n".join(lines)

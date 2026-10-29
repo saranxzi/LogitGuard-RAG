@@ -106,6 +106,7 @@ def run_benchmark(
     # 2. Load questions
     if not benchmark_file.exists():
         print(f"[Sandbox] Building benchmark file {benchmark_file}...")
+        from data.build_benchmark_300 import build_benchmark_300
         benchmark_file = build_benchmark_300()
 
     records = []
@@ -170,11 +171,11 @@ def run_benchmark(
                 methods_agg[m_id] = {
                     "name": sc.get("name", m_id),
                     "tp": 0, "fp": 0, "tn": 0, "fn": 0,
-                    "sample_f1s": [],
                     "sample_precs": [],
                     "sample_recs": [],
                     "sample_accs": [],
                     "latencies": [],
+                    "vram": [],
                     "y_true": [],
                     "y_score": [],
                 }
@@ -184,7 +185,6 @@ def run_benchmark(
             methods_agg[m_id]["fp"] += fp
             methods_agg[m_id]["tn"] += tn
             methods_agg[m_id]["fn"] += fn
-            methods_agg[m_id]["sample_f1s"].append(sc.get("f1", 0.0))
             methods_agg[m_id]["sample_precs"].append(sc.get("precision", 0.0))
             methods_agg[m_id]["sample_recs"].append(sc.get("recall", 0.0))
             methods_agg[m_id]["sample_accs"].append(sc.get("accuracy", 0.0))
@@ -192,6 +192,7 @@ def run_benchmark(
             # Latency
             comp_lat = float(m_obj.get("latency_ms", q_latency_ms))
             methods_agg[m_id]["latencies"].append(comp_lat)
+            methods_agg[m_id]["vram"].append(float(m_obj.get("vram_mb", 0.0) or 0.0))
 
             # Continuous score for AUROC
             is_pos = 1 if (tp + fn > 0) else 0
@@ -199,8 +200,9 @@ def run_benchmark(
                 pred_score = 1.0 if is_pos else 0.0
             elif m_id == "nli_judge":
                 pred_score = float(m_obj.get("score", 1.0 if (tp + fp > 0) else 0.0))
-            elif m_id == "logitguard":
-                pred_score = float(m_obj.get("score", max((s.get("score", 0.0) for s in m_obj.get("flagged_spans", [])), default=0.0)))
+            elif "score" in m_obj:
+                # Continuous detector score (LogitGuard, raw entropy, min concept prob)
+                pred_score = float(m_obj["score"])
             else:
                 pred_score = 1.0 if (tp + fp > 0) else 0.0
 
@@ -242,6 +244,8 @@ def run_benchmark(
         r_den = tp + fn
         rec = round(tp / r_den, 4) if r_den > 0 else 1.0
 
+        # F1 of the hallucinated class (the positive class); stored under "micro_f1" for
+        # backward compatibility of the JSON/CSV consumers
         f1_den = prec + rec
         micro_f1 = round(2 * prec * rec / f1_den, 4) if f1_den > 0 else 0.0
 
@@ -249,17 +253,21 @@ def run_benchmark(
         acc = round((tp + tn) / tot, 4) if tot > 0 else 1.0
         far = round(fp / (fp + tn), 4) if (fp + tn) > 0 else 0.0
 
-        macro_f1 = round(float(np.mean(m_data["sample_f1s"])), 4) if m_data["sample_f1s"] else 0.0
+        # Macro-F1 = unweighted mean of the F1 of both classes (hallucinated, grounded)
+        f1_neg_den = 2 * tn + fn + fp
+        f1_neg = (2 * tn / f1_neg_den) if f1_neg_den > 0 else 0.0
+        macro_f1 = round((micro_f1 + f1_neg) / 2.0, 4)
 
         try:
             if len(set(m_data["y_true"])) > 1:
                 auroc = round(float(roc_auc_score(m_data["y_true"], m_data["y_score"])), 4)
             else:
-                auroc = 1.0
-        except Exception:
-            auroc = 0.5
+                auroc = float("nan")  # undefined with a single class
+        except ValueError:
+            auroc = float("nan")
 
         avg_lat = round(float(np.mean(m_data["latencies"])), 1) if m_data["latencies"] else 0.0
+        avg_vram = round(float(np.mean(m_data["vram"])), 1) if m_data["vram"] else 0.0
         p95_lat = round(float(np.percentile(m_data["latencies"], 95)), 1) if m_data["latencies"] else 0.0
 
         summaries.append({
@@ -275,6 +283,7 @@ def run_benchmark(
             "far": far,
             "avg_latency_ms": avg_lat,
             "p95_latency_ms": p95_lat,
+            "extra_vram_mb": avg_vram,
         })
 
     # Order methods logically: Arbiter first, then LogitGuard, then NLI, Lexical, Entropy, MinProb
@@ -292,7 +301,7 @@ def run_benchmark(
         ("Paradigm", 24, "left"),
         ("Precision", 10, "right"),
         ("Recall", 9, "right"),
-        ("Micro-F1", 9, "right"),
+        ("F1 Halluc", 9, "right"),
         ("Accuracy", 9, "right"),
         ("AUROC", 8, "right"),
         ("Mean Lat", 10, "right"),
@@ -308,18 +317,6 @@ def run_benchmark(
     for s in summaries:
         m_id = s["method_id"]
         name = s["name"]
-        if m_id == "logitguard":
-            name_str = f"{BOLD}{GREEN}{name}{RESET}"
-            vram_str = f"{GREEN}0.0 MB{RESET}"
-        elif m_id == "fact_arbiter":
-            name_str = f"{CYAN}{name}{RESET}"
-            vram_str = "0.0 MB"
-        elif m_id == "nli_judge":
-            name_str = name
-            vram_str = f"{YELLOW}+320 MB{RESET}"
-        else:
-            name_str = name
-            vram_str = "0.0 MB"
 
         paradigm = (
             "Ground Truth Reference" if m_id == "fact_arbiter" else (
@@ -339,18 +336,16 @@ def run_benchmark(
 
         # Padding accounting for ANSI color codes
         pad_name = name.ljust(32)
+        vram_txt = f"{s['extra_vram_mb']:.1f} MB"
         if m_id == "logitguard":
             name_col = f"{BOLD}{GREEN}{pad_name}{RESET}"
-            vram_col = f"{GREEN}{'0.0 MB':>12}{RESET}"
+            vram_col = f"{GREEN}{vram_txt:>12}{RESET}"
         elif m_id == "fact_arbiter":
             name_col = f"{CYAN}{pad_name}{RESET}"
-            vram_col = f"{'0.0 MB':>12}"
-        elif m_id == "nli_judge":
-            name_col = f"{pad_name}"
-            vram_col = f"{YELLOW}{'+320 MB':>12}{RESET}"
+            vram_col = f"{vram_txt:>12}"
         else:
             name_col = f"{pad_name}"
-            vram_col = f"{'0.0 MB':>12}"
+            vram_col = f"{vram_txt:>12}"
 
         row = (
             f"{name_col} | {paradigm:<24} | {p_str:>10} | {r_str:>9} | {f1_str:>9} | "
@@ -359,7 +354,7 @@ def run_benchmark(
         print(row)
 
     print(sep_line)
-    print(f"{DIM}* Extra VRAM: Dynamic activation overhead. Note: Standalone NLI models (e.g. DeBERTa/LLaMA-as-Judge) require +1,450 MB persistent weights.{RESET}\n")
+    print(f"{DIM}* Extra VRAM: mean measured peak activation memory beyond the loaded verifier weights.{RESET}\n")
 
     # =========================================================================
     # DISPLAY TABLE 2: CONFUSION MATRIX BENCHMARK
@@ -397,7 +392,7 @@ def run_benchmark(
         print(f"{name_col} | {s['tp']:>10} | {fp_col} | {s['tn']:>11} | {s['fn']:>12} | {far_str:>17}")
 
     print(sep_line2)
-    print(f"{DIM}Key Takeaway: LogitGuard reduces false positive alarms by >60% vs Lexical Matching and by >80% vs Uncalibrated Token Entropy.{RESET}\n")
+    print()
 
     # =========================================================================
     # DISPLAY TABLE 3: CATEGORY-SPECIFIC BREAKDOWN
@@ -491,7 +486,7 @@ def run_benchmark(
         print(f"{fam_name:<36} | {fam_tot:>15} | {fam_gold:>12} | {fam_tp:>14} | {fam_fp:>14} | {p_str:>10} | {r_str:>9} | {f1_str:>9}")
 
     print(sep_line4)
-    print(f"{DIM}Key Takeaway: LogitGuard maintains consistent precision and recall across unseen non-Qwen generator models (LLaMA, Mistral, GPT-4).{RESET}\n")
+    print()
 
     # =========================================================================
     # PERSIST RESULTS
@@ -511,27 +506,28 @@ def run_benchmark(
             ))),
             "Precision": s["precision"],
             "Recall": s["recall"],
-            "Micro-F1": s["micro_f1"],
+            "F1_Halluc": s["micro_f1"],
             "Macro-F1": s["macro_f1"],
             "Accuracy": s["accuracy"],
             "AUROC": s["auroc"],
             "Latency_Mean_ms": s["avg_latency_ms"],
             "Latency_p95_ms": s["p95_latency_ms"],
-            "Extra_VRAM_MB": 0.0 if s["method_id"] != "nli_judge" else 320.0,
+            "Extra_VRAM_MB": s["extra_vram_mb"],
         })
     main_df = pd.DataFrame(csv_rows)
     main_csv_path = results_dir / "main_table.csv"
     main_df.to_csv(main_csv_path, index=False)
 
-    # 2. Latency CSV
+    # 2. Latency CSV (measured per method in this run)
     lat_rows = [
-        {"Component": "Qwen-2.5-1.5B Forward Pass", "Mean_ms": 14.1, "p95_ms": 16.5, "Extra_VRAM_MB": 0.0},
-        {"Component": "CCLA In-Place GPU Hook", "Mean_ms": 1.9, "p95_ms": 2.3, "Extra_VRAM_MB": 0.0},
-        {"Component": "spaCy Syntactic Anchor Filter", "Mean_ms": 2.2, "p95_ms": 2.8, "Extra_VRAM_MB": 0.0},
-        {"Component": "BPE Onset Span Aggregator", "Mean_ms": 0.3, "p95_ms": 0.5, "Extra_VRAM_MB": 0.0},
-        {"Component": "LogitGuard Total Overhead", "Mean_ms": 4.4, "p95_ms": 5.6, "Extra_VRAM_MB": 0.0},
-        {"Component": "LogitGuard Complete Pipeline", "Mean_ms": summaries[1]["avg_latency_ms"] if len(summaries)>1 else 185.0, "p95_ms": summaries[1]["p95_latency_ms"] if len(summaries)>1 else 350.0, "Extra_VRAM_MB": 0.0},
-        {"Component": "Auxiliary LLM NLI Judge", "Mean_ms": summaries[2]["avg_latency_ms"] if len(summaries)>2 else 1500.0, "p95_ms": summaries[2]["p95_latency_ms"] if len(summaries)>2 else 5500.0, "Extra_VRAM_MB": 320.0},
+        {
+            "Component": s["name"],
+            "Mean_ms": s["avg_latency_ms"],
+            "p95_ms": s["p95_latency_ms"],
+            "Extra_VRAM_MB": s["extra_vram_mb"],
+        }
+        for s in summaries
+        if s["method_id"] != "fact_arbiter"
     ]
     pd.DataFrame(lat_rows).to_csv(results_dir / "latency.csv", index=False)
 
