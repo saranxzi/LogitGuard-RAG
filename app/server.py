@@ -56,6 +56,7 @@ def initialize_model():
         print("[LogitGuard] Warm-up successful.")
     except Exception as e:
         print(f"[LogitGuard] Warm-up warning: {e}")
+    print("[LogitGuard] Ready to serve requests.")
 
 
 def load_cached_samples():
@@ -86,9 +87,9 @@ class SwitchModelRequest(BaseModel):
 class RescoreRequest(BaseModel):
     sample_id: Optional[str] = None
     telemetry: Optional[Dict[str, Any]] = None
-    tau: Optional[float] = 0.62
-    variant: Optional[str] = "core"
-    mask_mode: Optional[str] = "soft"
+    tau: Optional[float] = None
+    variant: Optional[str] = None
+    mask_mode: Optional[str] = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -118,7 +119,7 @@ def get_status():
     vram_mb = 0.0
     if torch.cuda.is_available():
         vram_mb = round(torch.cuda.memory_allocated() / (1024 * 1024), 1)
-    model_name = _CFG.get("model_name")
+    model_name = getattr(_GPU_MODEL, "name_or_path", None) or _CFG.get("model_name")
     dtype = _CFG.get("dtype", "float16")
     model_label = f"{model_name} ({dtype})" if dtype != "float16" else model_name
     return {
@@ -139,7 +140,7 @@ def get_active_model():
 
 @app.post("/api/model/switch")
 def switch_model(req: SwitchModelRequest):
-    global _GPU_MODEL, _GPU_TOKENIZER, _INIT_TIME, _CFG
+    global _GPU_MODEL, _GPU_TOKENIZER, _INIT_TIME
     import gc
     import torch
     with _GPU_LOCK:
@@ -265,23 +266,26 @@ def api_run(req: RunRequest):
 
 # Compatibility endpoints for integration tests
 @app.post("/compare_live")
-async def api_compare_live(req: RunRequest):
-    return await api_run(req)
+def api_compare_live(req: RunRequest):
+    return api_run(req)
 
 
 @app.post("/generate_live")
-async def api_generate_live(req: RunRequest):
+def api_generate_live(req: RunRequest):
     req.response = None
-    return await api_run(req)
+    return api_run(req)
 
 
 @app.post("/verify")
-async def api_verify(req: RunRequest):
+def api_verify(req: RunRequest):
     run_cfg = dict(_CFG)
     with _GPU_LOCK:
         if _GPU_MODEL is None:
             raise HTTPException(status_code=503, detail="GPU model not loaded.")
-        result = verify(_GPU_MODEL, _GPU_TOKENIZER, req.context, req.query, req.response or "", run_cfg)
+        try:
+            result = verify(_GPU_MODEL, _GPU_TOKENIZER, req.context or "", req.query, req.response or "", run_cfg)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
     return JSONResponse(content=result)
 
 
@@ -314,9 +318,9 @@ async def api_rescore(req: RescoreRequest):
         raise HTTPException(status_code=400, detail="Must provide sample_id or telemetry.")
 
     run_cfg = dict(_CFG)
-    run_cfg["tau"] = req.tau if req.tau is not None else float(_CFG.get("tau", 0.62))
-    run_cfg["variant"] = req.variant or "core"
-    run_cfg["mask_mode"] = req.mask_mode or "soft"
+    run_cfg["tau"] = req.tau if req.tau is not None else float(_CFG.get("tau", 0.58))
+    run_cfg["variant"] = req.variant or _CFG.get("variant", "ccla")
+    run_cfg["mask_mode"] = req.mask_mode or _CFG.get("mask_mode", "soft")
 
     result = rescore(tel, run_cfg)
     return JSONResponse(content=result)
@@ -328,9 +332,15 @@ async def get_benchmarks():
     abl_file = Path(_CFG["paths"]["ablation_table"])
     lat_file = Path(_CFG["paths"]["latency_table"])
 
-    main_rows = pd.read_csv(main_file).to_dict(orient="records") if main_file.exists() else []
-    abl_rows = pd.read_csv(abl_file).to_dict(orient="records") if abl_file.exists() else []
-    lat_rows = pd.read_csv(lat_file).to_dict(orient="records") if lat_file.exists() else []
+    def _rows(path: Path) -> List[Dict[str, Any]]:
+        if not path.exists():
+            return []
+        df = pd.read_csv(path)
+        return df.astype(object).where(pd.notna(df), None).to_dict(orient="records")
+
+    main_rows = _rows(main_file)
+    abl_rows = _rows(abl_file)
+    lat_rows = _rows(lat_file)
 
     return {
         "main_table": main_rows,

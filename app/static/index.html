@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
     /* ==========================================================================
        DESIGN SYSTEM: Warm Sage & Charcoal — editorial research craft
        ========================================================================== */
-    :root[data-theme="light"] {
+    :root {
       --bg: #fafaf8;
       --surface-1: #ffffff;
       --surface-2: #f5f5f0;
@@ -51,51 +51,6 @@
       --shadow-md: 0 4px 6px rgba(0,0,0,0.05);
       --shadow-lg: 0 10px 20px rgba(0,0,0,0.06);
       --modal-overlay: rgba(26, 26, 23, 0.5);
-    }
-
-    :root[data-theme="dark"] {
-      --bg: #0f0f0d;
-      --surface-1: #1a1a17;
-      --surface-2: #222220;
-      --surface-3: #2e2e2a;
-      --border: #3a3a35;
-      --border-subtle: #2e2e2a;
-      --border-focus: #8faa8c;
-
-      --text-1: #f5f5f0;
-      --text-2: #d4d4cc;
-      --text-3: #9a9a8e;
-      --text-dim: #6b6b60;
-
-      --primary: #8faa8c;
-      --primary-hover: #7d9a7a;
-      --primary-active: #6b8a68;
-      --primary-surface: rgba(143, 170, 140, 0.1);
-      --primary-border: rgba(143, 170, 140, 0.25);
-      --primary-text: #a8c4a5;
-
-      --danger: #fc8181;
-      --danger-bg: rgba(252, 129, 129, 0.12);
-      --danger-border: rgba(252, 129, 129, 0.3);
-      --danger-text: #fed7d7;
-      --danger-mark: rgba(252, 129, 129, 0.2);
-
-      --warning: #fbd38d;
-      --warning-bg: rgba(251, 211, 141, 0.1);
-      --warning-border: rgba(251, 211, 141, 0.25);
-      --warning-text: #fefcbf;
-      --warning-mark: rgba(251, 211, 141, 0.15);
-
-      --success: #68d391;
-      --success-bg: rgba(104, 211, 145, 0.1);
-      --success-border: rgba(104, 211, 145, 0.25);
-      --success-text: #c6f6d5;
-
-      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-      --shadow: 0 1px 3px rgba(0,0,0,0.4);
-      --shadow-md: 0 4px 6px rgba(0,0,0,0.5);
-      --shadow-lg: 0 10px 20px rgba(0,0,0,0.6);
-      --modal-overlay: rgba(0,0,0,0.7);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -172,22 +127,6 @@
       100% { box-shadow: 0 0 0 0 rgba(47, 133, 90, 0); }
     }
 
-    .theme-btn {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      color: var(--text-2);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.74rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      transition: all 120ms ease;
-    }
-    .theme-btn:hover { background: var(--surface-3); color: var(--text-1); border-color: var(--primary); }
-    .theme-btn:active { transform: scale(0.97); }
 
     /* Layout Container */
     .container {
@@ -345,6 +284,7 @@
       background: var(--surface-2); border: 1px solid var(--border);
       border-radius: 7px; padding: 16px 18px;
       font-size: 0.98rem; line-height: 1.7; color: var(--text-1);
+      white-space: pre-wrap;
     }
 
     mark.flagged { padding: 1px 4px; border-radius: 3px; font-weight: 600; }
@@ -666,11 +606,8 @@
     <div class="header-right">
       <div class="gpu-pill">
         <div class="pulse-dot"></div>
-        <span id="gpuStatusText">Qwen-2.5 · GPU Active</span>
+        <span id="gpuStatusText">Connecting…</span>
       </div>
-      <button class="theme-btn" id="themeToggleBtn">
-        <span id="themeIcon">☀️</span> <span id="themeLabel">Light</span>
-      </button>
     </div>
   </header>
 
@@ -689,20 +626,14 @@
           <span class="template-label">Templates:</span>
           <select class="template-select" id="templateSelect">
             <option value="" selected disabled>Choose a template…</option>
-            <option value="penicillin">Alexander Fleming & Penicillin</option>
-            <option value="google_open">Google Founding & Stanford</option>
-            <option value="wifi_rag">Bistro Luna Wi-Fi (RAG Conflict)</option>
-            <option value="apollo_moon">Apollo 11 Moon Landing</option>
-            <option value="eiffel">Eiffel Tower Specifications</option>
-            <option value="quantum">Sycamore Quantum Processor</option>
-            <option value="mars_rover">Mars Perseverance & Ingenuity</option>
-            <option value="curie_nobel">Marie Curie Nobel Prizes</option>
-            <optgroup label="Hallucination Demos (Pre-filled)">
-              <option value="demo_solar">Solar Farm — Wrong Location & Capacity</option>
-              <option value="demo_bistro">Bistro Luna — Fabricated WiFi & Stars</option>
-              <option value="demo_anne">Anne Frank — Wrong Death Year</option>
-              <option value="demo_everest">Mount Everest — Wrong Height & Year</option>
-            </optgroup>
+            <option value="bench_sucasa">Su Casa Fresh Mexican Grill — Opening Hours [TP]</option>
+            <option value="bench_burj">Burj Khalifa — Specifications [TP]</option>
+            <option value="bench_eiffel">Eiffel Tower — Height & Completion [TP]</option>
+            <option value="bench_shard">The Shard — Specifications [TP]</option>
+            <option value="bench_butcher">Butcher Shop — Phone Number [TN]</option>
+            <option value="bench_google">Google — Origin Story [TN]</option>
+            <option value="bench_kilimanjaro">Tallest Mountain in the World [FP] [FN]</option>
+            <option value="bench_price">The Price Is Right — News Summary [FN]</option>
           </select>
           <span class="loaded-hint" id="loadedHint">✓ Loaded</span>
         </div>
@@ -710,7 +641,6 @@
 
       <div style="display:flex;flex-direction:column;gap:8px;">
         <input type="text" class="prompt-input" id="qryInput"
-               value="Who discovered penicillin and in what year was it published?"
                placeholder="Type any question for Qwen…" />
 
         <button class="ctx-toggle" id="btnToggleContext">
@@ -746,7 +676,7 @@
           <span id="btnRunText">⚡ Generate & Compare Methods</span>
         </button>
         <span style="font-size:0.7rem;color:var(--text-3);">
-          Single GPU forward pass · 5 detection methods · Dynamic Fact Arbiter audit
+          Two teacher-forced verifier passes · 5 detection methods · Fact Arbiter audit
         </span>
       </div>
     </div>
@@ -800,7 +730,7 @@
             Verification & Confusion Matrix
           </span>
           <div style="font-size:0.7rem;color:var(--text-3);margin-top:1px;">
-            Dynamic Fact Arbiter: Authoritative Knowledge Retrieval & Semantic Agreement.
+            Ground truth: dataset annotations for benchmark templates; otherwise matching against the context (RAG) or Wikipedia + model self-consistency (open domain).
           </div>
         </div>
         <div class="audit-badge" id="domainBadge">Dynamic Arbiter Active</div>
@@ -846,7 +776,7 @@
           <thead>
             <tr>
               <th>Method</th><th>Paradigm</th><th>Verdict</th>
-              <th>Latency</th><th>VRAM</th><th>Flagged</th>
+              <th>Latency</th><th title="Peak GPU memory above the loaded model weights, measured for this request">Extra VRAM</th><th>Flagged</th>
               <th>Inspect</th><th></th>
             </tr>
           </thead>
@@ -940,57 +870,55 @@
 
   <script>
     const TEMPLATES = {
-      penicillin: {
-        qry: "Who discovered penicillin and in what year was it published?",
-        ctx: "Sir Alexander Fleming discovered penicillin at St. Mary's Hospital in London in September 1928, after returning from vacation to find mold had killed Staphylococcus bacteria."
+      // Annotated benchmark cases: `gold` is the dataset's hallucination annotation and is sent
+      // to the arbiter, so the confusion matrix uses it instead of string matching.
+      bench_sucasa: {
+        qry: "Generate a faithful description based on the restaurant key-value attributes.",
+        ctx: "{\"name\": \"Su Casa Fresh Mexican Grill\", \"address\": \"1417 San Andres St\", \"city\": \"Santa Barbara\", \"state\": \"CA\", \"categories\": \"Mexican, Restaurants\", \"hours\": {\"Monday\": \"6:0-21:0\", \"Tuesday\": \"6:0-21:0\", \"Wednesday\": \"6:0-21:0\", \"Thursday\": \"6:0-21:0\", \"Friday\": \"6:0-21:0\", \"Saturday\": \"6:0-21:0\", \"Sunday\": \"6:0-21:0\"}, \"attributes\": {\"BusinessParking\": {\"garage\": false, \"street\": true, \"validated\": false, \"lot\": true, \"valet\": false}, \"RestaurantsReservations\": false, \"OutdoorSeating\": true, \"WiFi\": \"no\", \"RestaurantsTakeOut\": true, \"RestaurantsGoodForGroups\": true, \"Music\": null, \"Ambience\": {\"divey\": null, \"hipster\": null, \"casual\": true, \"touristy\": null, \"trendy\": null, \"intimate\": null, \"romantic\": false, \"classy\": null, \"upscale\": null}}, \"business_stars\": 4.5, \"review_info\": [{\"review_stars\": 5.0, \"review_date\": \"2020-07-29 04:39:12\", \"review_text\": \"Found this gem bopping around the neighborhood, thankfully we did! It was really good food food and the woman making it was gem! I'll be more than happy to go back!\"}, {\"review_stars\": 5.0, \"review_date\": \"2020-01-01 20:58:37\", \"review_text\": \"Amazing!!!! Such great food. The nachos were incredible and the service was great. My wife eats low carb and she got the bowl with no rice and it tasted healthy and delicious. I recommend getting fresh avocado in place of the guacamole sauce for the extra charge on the nachos. It's like 1.50 extra but so worth it!!! We will be back next time we are in SB.\"}, {\"review_stars\": 5.0, \"review_date\": \"2019-11-19 05:14:43\", \"review_text\": \"The owner Efren (from Michoac\\u00e1n), allowed me to have dinner and a cold beer after they were closing (slow\\nMonday night). He made me a plate of Chile Verde (pork), very tasty.\"}]}",
+        resp: "Su Casa Fresh Mexican Grill is a restaurant located at 1417 San Andres St in Santa Barbara, California. The business operates from Monday to Sunday, with hours of operation ranging from 6:00 PM to 11:00 PM. The restaurant serves Mexican cuisine and is categorized as a restaurant.\nCustomers who reviewed the business highly praised the quality of the food and the friendly service. They also noted that the outdoor seating area is available. Some customers also recommended trying the fresh avocado instead of guacamole sauce on the nachos for an additional fee.\nOverall, Su Casa Fresh Mexican Grill seems to be a popular choice for those looking for authentic Mexican cuisine in a casual setting.",
+        gold: [{"char_start": 186, "char_end": 205}]  // data/benchmark_300.jsonl: ragtruth_data2txt_125
       },
-      google_open: {
-        qry: "Tell me the story of Google's founding and when it was incorporated.",
-        ctx: ""
+      bench_burj: {
+        qry: "List Burj Khalifa specifications.",
+        ctx: "Burj Khalifa in Dubai reaches 828 meters (2,717 feet) with 163 floors, completed in 2010.",
+        resp: "Structure: Burj Khalifa\nCity: Dubai\nHeight: 1,420 meters\nFloors: 163\nCompleted: 2010",
+        gold: [{"char_start": 44, "char_end": 56}]  // data/benchmark_300.jsonl: scaffold_hal_08
       },
-      wifi_rag: {
-        qry: "Describe Bistro Luna amenities based strictly on the context attributes.",
-        ctx: '{"name": "Bistro Luna", "city": "Austin", "WiFi": "no", "stars": 4.5, "outdoor_seating": true}'
+      bench_eiffel: {
+        qry: "State the height and finished date of the Eiffel Tower.",
+        ctx: "The Eiffel Tower stands 330 meters tall including the radio antenna at the top. Construction finished in 1889.",
+        resp: "Structure: Eiffel Tower\nHeight: 330 meters\nFinished: 1945",
+        gold: [{"char_start": 53, "char_end": 57}]  // data/benchmark_300.jsonl: scaffold_hal_04
       },
-      apollo_moon: {
-        qry: "When did Apollo 11 land on the moon and who was the command module pilot?",
-        ctx: "Apollo 11 landed on the Moon on July 20, 1969. The command module pilot who remained in lunar orbit was Michael Collins, while Neil Armstrong and Buzz Aldrin walked on the surface."
+      bench_shard: {
+        qry: "Provide the specifications of The Shard.",
+        ctx: "The Shard is a 72-storey skyscraper in London, completed in July 2012. It reaches a height of 309.6 meters.",
+        resp: "**Building**: The Shard\n**Height**: 540.2 meters\n**Completion Year**: 2012\n**Location**: London",
+        gold: [{"char_start": 36, "char_end": 48}]  // data/benchmark_300.jsonl: scaffold_hal_01
       },
-      eiffel: {
-        qry: "State the height and completion year of the Eiffel Tower.",
-        ctx: "The Eiffel Tower in Paris, France, stands 330 meters tall (including the antenna) and was completed on March 31, 1889, for the 1889 World's Fair."
+      bench_butcher: {
+        qry: "Answer the question based on the passage.",
+        ctx: "{\"question\": \"butcher shop phone number\", \"passages\": \"passage 1:Butcher Shop - Hayward 826 B Street, Hayward CA 94541 Phone Number: (510) 889-8690\\n\\npassage 2:Butcher Shop - Lakefield 212 Main Street, Lakefield MN 56150 Phone Number: (507) 662-6281\\n\\npassage 3:Some More Phone Numbers Related To The Butcher Shop The Local Butcher Shop phone number : (510) 845-6328 Boones Butcher Shop phone number : (502) 348-3668 Ye Ole Butcher Shop phone number : (972) 423-1848 J Ms Butcher Shop phone number : (865) 483-9228\\n\\n\"}",
+        resp: "Butcher Shop - Hayward phone number: (510) 889-8690",
+        gold: []  // data/benchmark_300.jsonl: ragtruth_qa_031
       },
-      quantum: {
-        qry: "What was the Sycamore quantum processor benchmark reported in 2019?",
-        ctx: "In October 2019, Google announced that its 54-qubit Sycamore processor performed a target calculation in 200 seconds that would take the world's fastest supercomputer 10,000 years."
+      bench_google: {
+        qry: "Tell me about Google and its origin.",
+        ctx: "",
+        resp: "Google was founded on September 4, 1998, by Larry Page and Sergey Brin while they were Ph.D. students at Stanford University in California. The search engine originally began under the name BackRub in 1996. It was later renamed Google, a misspelling of the word googol, which refers to the number 1 followed by one hundred zeros.",
+        gold: []  // data/benchmark_300.jsonl: open_grounded_01
       },
-      mars_rover: {
-        qry: "Which NASA rover landed in Jezero Crater in 2021 and what helicopter accompanied it?",
-        ctx: "NASA's Perseverance rover landed in Jezero Crater on Mars on February 18, 2021. It was accompanied by the Ingenuity helicopter, which completed 72 powered flights."
+      bench_kilimanjaro: {
+        qry: "What is the tallest mountain in the world?",
+        ctx: "",
+        resp: "The highest mountain on Earth above sea level is Mount Kilimanjaro, located in the Himalayas with an elevation of 8,848 meters.",
+        gold: [{"char_start": 49, "char_end": 66}]  // data/benchmark_300.jsonl: open_hal_04
       },
-      curie_nobel: {
-        qry: "In which scientific fields did Marie Curie win her two Nobel Prizes and in what years?",
-        ctx: "Marie Curie was awarded the 1903 Nobel Prize in Physics for her research on radiation phenomena and the 1911 Nobel Prize in Chemistry for the discovery of radium and polonium."
-      },
-      demo_solar: {
-        qry: "Where is the Copper Mountain Solar Facility located and what is its capacity?",
-        ctx: "Copper Mountain Solar Facility is a 400 MW solar photovoltaic power plant in Boulder City, Nevada, USA.",
-        resp: "Copper Mountain Solar Facility is a 950 MW solar photovoltaic power plant located in Phoenix, Arizona."
-      },
-      demo_bistro: {
-        qry: "Describe Bistro Luna amenities based strictly on the context attributes.",
-        ctx: '{"name": "Bistro Luna", "city": "Austin", "WiFi": "no", "stars": 4.5, "outdoor_seating": true}',
-        resp: "Bistro Luna in Austin offers complimentary high-speed WiFi and has earned a perfect 5.0 star rating with indoor-only seating."
-      },
-      demo_anne: {
-        qry: "What year did Anne Frank die according to the archive report?",
-        ctx: "Archive report: The historical subject Anne Frank passed away in Bergen-Belsen concentration camp in 1945.",
-        resp: "According to the archive report, Anne Frank passed away in 2022."
-      },
-      demo_everest: {
-        qry: "What is the height of Mount Everest and when was it first summited?",
-        ctx: "Mount Everest stands at 8,849 meters above sea level. It was first summited on May 29, 1953 by Edmund Hillary and Tenzing Norgay.",
-        resp: "Mount Everest stands at 9,200 meters above sea level. It was first summited in 1947 by George Mallory."
+      bench_price: {
+        qry: "Summarize the key events in the news article faithfully.",
+        ctx: "What do we have for the contestant on \"The Price Is Right\"? A brand-new car! Whoops. That wasn't supposed to happen. On Thursday's edition of the popular game show, model Manuela Arbelaez accidentally revealed the correct answer to a guessing game for a new Hyundai Sonata. Host Drew Carey couldn't stop laughing. \"Congratulations! Manuela just gave you a car!\" he exulted. Arbelaez was mortified, attempting to hide behind the display. But everything turned out OK, she tweeted later. It's been a busy week for \"The Price Is Right.\" On Wednesday, former host Bob Barker, 91, showed up to run his old show.",
+        resp: "On The Price is Right, model Manuela Arbelaez accidentally gave away a car to a contestant, causing host Drew Carey to laugh and the audience to gasp.",
+        gold: [{"char_start": 46, "char_end": 90}]  // data/benchmark_300.jsonl: ragtruth_summary_081
       }
     };
 
@@ -1000,18 +928,20 @@
     let responseVisible = false;
     let activeMethodId = "logitguard";
     let activeTabId = "auditCard";
+    let currentGold = null;  // gold annotation of the loaded benchmark template, if unedited
 
     const $ = id => document.getElementById(id);
 
     function init() {
-      const saved = localStorage.getItem("logitguard_theme") || "light";
-      setTheme(saved);
-      $("themeToggleBtn").addEventListener("click", () => {
-        setTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
-      });
+      loadStatus();
 
       $("btnToggleContext").addEventListener("click", toggleCtx);
       $("btnToggleResponse").addEventListener("click", toggleResp);
+
+      // Annotation offsets only hold for the exact template text
+      ["qryInput", "ctxInput", "respInput"].forEach(id =>
+        $(id).addEventListener("input", () => { currentGold = null; })
+      );
 
       $("templateSelect").addEventListener("change", e => {
         loadTemplate(e.target.value);
@@ -1044,7 +974,8 @@
       $("modalClose").addEventListener("click", closeModal);
       $("infoModal").addEventListener("click", e => { if (e.target === $("infoModal")) closeModal(); });
 
-      // Run default template on load
+      // Run a fast annotated example on load (open-domain generation takes 10+ s)
+      loadTemplate("bench_burj");
       run();
     }
 
@@ -1069,6 +1000,7 @@
       else { if (contextVisible) toggleCtx(); }
 
       $("respInput").value = t.resp || "";
+      currentGold = t.gold || null;
       if (t.resp && t.resp.trim()) { if (!responseVisible) toggleResp(); }
       else { if (responseVisible) toggleResp(); }
 
@@ -1078,11 +1010,15 @@
       if (sel) sel.value = key;
     }
 
-    function setTheme(t) {
-      document.documentElement.setAttribute("data-theme", t);
-      localStorage.setItem("logitguard_theme", t);
-      $("themeIcon").textContent = t === "dark" ? "🌙" : "☀️";
-      $("themeLabel").textContent = t === "dark" ? "Dark" : "Light";
+    async function loadStatus() {
+      // Header pill shows the model and device actually loaded on the server
+      try {
+        const st = await (await fetch("/status")).json();
+        const device = String(st.device || "").startsWith("cuda") ? "GPU" : "CPU";
+        $("gpuStatusText").textContent = `${st.model} · ${device} · ${st.dtype}`;
+      } catch (e) {
+        $("gpuStatusText").textContent = "Server unreachable";
+      }
     }
 
     function toggleCtx() {
@@ -1107,13 +1043,15 @@
 
       $("runSpinner").style.display = "inline-block";
       $("btnRun").disabled = true;
-      $("btnRunText").textContent = "Generating & probing logits…";
+      const auditing = responseVisible && $("respInput").value.trim();
+      $("btnRunText").textContent = auditing ? "Auditing response…" : "Generating & auditing…";
 
       try {
         const ctx = contextVisible ? $("ctxInput").value.trim() : "";
         const resp = responseVisible ? $("respInput").value.trim() : "";
         const payload = { query: qry, context: ctx };
         if (resp) payload.response = resp;
+        if (currentGold && resp) payload.gold_spans = currentGold;
         const res = await fetch("/api/run", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
@@ -1139,7 +1077,7 @@
       switchTab(activeTabId || "auditCard");
 
       const gen = d.generation_time_ms ? `${d.generation_time_ms} ms` : "0 ms";
-      $("metaTiming").textContent = `Generation: ${gen} | Forward Hook: ${d.model_forward_ms || 25} ms`;
+      $("metaTiming").textContent = `Generation: ${gen} | Verifier passes: ${d.model_forward_ms != null ? d.model_forward_ms : "—"} ms`;
 
       renderActiveMethod();
       renderMatrix(d.methods || []);
@@ -1197,6 +1135,7 @@
       const body = $("matrixBody");
       body.innerHTML = "";
 
+      const maxLat = Math.max(1, ...methods.map(m => Number(m.latency_ms) || 0));
       methods.forEach(m => {
         const ours = m.id === "logitguard";
         const active = m.id === activeMethodId;
@@ -1204,12 +1143,11 @@
         tr.dataset.mid = m.id;
         if (active) tr.className = "active-row";
 
-        const pct = Math.min(100, Math.round((m.latency_ms / 400) * 100));
-        const slow = m.latency_ms > 200;
+        const pct = Math.max(2, Math.round(((Number(m.latency_ms) || 0) / maxLat) * 100));
+        const slow = pct > 50;
 
-        let tagHTML = '<span class="tag neutral">Clean</span>';
+        let tagHTML = '<span class="tag pass">Clean</span>';
         if (m.flagged_count > 0) tagHTML = `<span class="tag fail">Flagged (${m.flagged_count})</span>`;
-        else if (ours) tagHTML = '<span class="tag pass">✔ Grounded</span>';
 
         const is_arbiter = m.id === "fact_arbiter";
         tr.innerHTML = `
@@ -1383,12 +1321,13 @@
       }
 
       const isAnchor = Boolean(t.is_anchor);
+      const tau = (currentData.tau !== undefined && currentData.tau !== null) ? Number(currentData.tau) : 0.58;
       const u_val = (t.U !== undefined && t.U !== null) ? Number(t.U) : ((t.H / (1.0 + t.delta)) * (isAnchor ? 1.0 : 0.1));
 
       // Diagnostic classification:
       let diagHtml = "";
       if (!hasContext) {
-        if (u_val >= 0.62) {
+        if (u_val > tau) {
           diagHtml = '<span style="color:var(--danger);font-weight:700;">⚠ High Uncertainty</span>';
         } else if (isAnchor) {
           diagHtml = '<span style="color:var(--success);font-weight:600;">✔ Factual Entity</span>';
@@ -1396,13 +1335,13 @@
           diagHtml = '<span style="color:var(--success);font-weight:600;">✔ Syntax Token</span>';
         }
       } else {
-        if (isAnchor && u_val >= 0.62) {
+        if (isAnchor && u_val > tau) {
           diagHtml = '<span style="color:var(--danger);font-weight:700;">❌ Ungrounded Claim</span>';
         } else if (cpr > 0.4 && u_val >= 0.4) {
           diagHtml = '<span style="color:var(--success);font-weight:700;">✔ Grounded Paraphrase</span>';
         } else if (cpr > 0.2) {
           diagHtml = '<span style="color:var(--success);font-weight:600;">✔ Context Grounded</span>';
-        } else if (u_val < 0.62) {
+        } else if (u_val <= tau) {
           diagHtml = '<span style="color:var(--success);font-weight:600;">✔ Grounded Token</span>';
         } else {
           diagHtml = '<span style="color:var(--warning);font-weight:600;">⚠ Ambiguous</span>';
@@ -1410,8 +1349,9 @@
       }
       $("statDiag").innerHTML = diagHtml;
 
-      $("statW").textContent = isAnchor ? "1.0 (Anchor)" : "0.1 (Filler)";
-      $("statU").textContent = `${u_val.toFixed(4)} (τ = 0.62)`;
+      const wStr = (t.w !== undefined && t.w !== null) ? Number(t.w).toFixed(1) : (isAnchor ? "1.0" : "0.1");
+      $("statW").textContent = `${wStr} (${isAnchor ? "Anchor" : "Filler"})`;
+      $("statU").textContent = `${u_val.toFixed(4)} (τ = ${tau})`;
 
       const box = $("top5Box");
       box.innerHTML = "";

@@ -110,20 +110,36 @@ logitguard/
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .\.venv\Scripts\Activate.ps1
+pip install torch --index-url https://download.pytorch.org/whl/cu128  # CUDA build (RTX 50-series needs CUDA 12.8)
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
 
-### 2. Run Benchmarks
+The first start downloads `Qwen/Qwen2.5-1.5B-Instruct` (~3 GB) from Hugging Face, so it needs internet once.
 
-```bash
-python run_benchmark.py
-```
+### 2. Run Web Service
 
-### 3. Run Web Service
+On Windows, double-click `run.bat` (it opens the browser once the model has loaded), or run:
 
 ```bash
 python -m uvicorn app.server:app --host 127.0.0.1 --port 8000
+```
+
+Then open http://127.0.0.1:8000. Model loading and warm-up take roughly 20–40 seconds.
+
+### 3. Run Benchmarks
+
+The benchmark sends every query to the running web service, so start the server (step 2) first and run this in a second terminal:
+
+```bash
+python run_benchmark.py            # full benchmark (data/benchmark_300.jsonl)
+python run_benchmark.py --limit 20 # quick check
+```
+
+### 4. Run Tests
+
+```bash
+python -m pytest tests
 ```
 
 ---
