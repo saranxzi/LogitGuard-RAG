@@ -79,3 +79,9 @@ def test_server_api_run_validation(client):
     # Empty query should return 422 Unprocessable Entity
     res = client.post("/api/run", json={"query": "   ", "context": ""})
     assert res.status_code == 422
+
+
+def test_server_compat_endpoints(client):
+    body = {"query": "What color is the sky?", "context": "The sky is blue.", "response": "The sky is blue."}
+    assert client.post("/compare_live", json=body).status_code == 200
+    assert client.post("/verify", json=body).status_code == 200

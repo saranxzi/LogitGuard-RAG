@@ -56,3 +56,15 @@ def test_chunked_logit_probe_reduction():
     top2_vals = torch.topk(z0, k=2).values
     expected_delta0 = float(top2_vals[0] - top2_vals[1])
     assert np.isclose(collected["delta"][0], expected_delta0, atol=1e-3)
+
+
+def test_left_pad_pair_keeps_unbatched_positions():
+    torch = pytest.importorskip("torch")
+    from logitguard.model import _left_pad_pair
+
+    a = torch.tensor([[5, 6, 7, 8]])
+    b = torch.tensor([[9, 8]])
+    ids, mask, pos = _left_pad_pair(a, b, pad_id=0)
+    assert ids.tolist() == [[5, 6, 7, 8], [0, 0, 9, 8]]
+    assert mask.tolist() == [[1, 1, 1, 1], [0, 0, 1, 1]]
+    assert pos.tolist() == [[0, 1, 2, 3], [0, 0, 0, 1]]  # real tokens of row 2 start at position 0

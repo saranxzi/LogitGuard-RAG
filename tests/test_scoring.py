@@ -182,3 +182,29 @@ def test_bpe_onset_span_aggregation_prevents_dilution():
     scores_hybrid = compute_span_scores(token_scores, weights, spans, agg="hybrid")
     assert scores_hybrid[0] == 1.0
     assert scores_hybrid[0] > 0.62
+
+
+def test_load_config_does_not_mutate_defaults():
+    from logitguard.config import DEFAULT_CONFIG, load_config
+
+    before = dict(DEFAULT_CONFIG["weights"])
+    load_config()
+    assert DEFAULT_CONFIG["weights"] == before
+
+
+def test_context_match_uses_whole_words_and_numbers():
+    from logitguard.scoring import _normalize_for_match, _word_in_context
+
+    ctx = " " + _normalize_for_match("It stands at 8,849 meters and was summited in 1953. Rated 4.5 stars.") + " "
+    assert _word_in_context("8,849", ctx)
+    assert _word_in_context("4.5", ctx)
+    assert not _word_in_context("9,200", ctx)
+    assert not _word_in_context("19", ctx)  # a digit subword must not match inside "1953"
+    assert _word_in_context("summited", ctx)
+
+
+def test_min_prob_variant_is_one_minus_token_prob():
+    scores = compute_token_scores(
+        H=np.zeros(3), delta=np.zeros(3), realized_prob=np.array([1.0, 0.25, 0.9]), variant="min_prob"
+    )
+    np.testing.assert_allclose(scores, [0.0, 0.75, 0.1], atol=1e-6)
