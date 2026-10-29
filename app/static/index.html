@@ -689,14 +689,20 @@
           <span class="template-label">Templates:</span>
           <select class="template-select" id="templateSelect">
             <option value="" selected disabled>Choose a template…</option>
-            <option value="penicillin">💊 Alexander Fleming & Penicillin</option>
-            <option value="google_open">📅 Google Founding & Stanford</option>
-            <option value="wifi_rag">📶 Bistro Luna Wi-Fi (RAG Conflict)</option>
-            <option value="apollo_moon">🚀 Apollo 11 Moon Landing</option>
-            <option value="eiffel">🗼 Eiffel Tower Specifications</option>
-            <option value="quantum">⚛️ Sycamore Quantum Processor</option>
-            <option value="mars_rover">🪐 Mars Perseverance & Ingenuity</option>
-            <option value="curie_nobel">☢️ Marie Curie Nobel Prizes</option>
+            <option value="penicillin">Alexander Fleming & Penicillin</option>
+            <option value="google_open">Google Founding & Stanford</option>
+            <option value="wifi_rag">Bistro Luna Wi-Fi (RAG Conflict)</option>
+            <option value="apollo_moon">Apollo 11 Moon Landing</option>
+            <option value="eiffel">Eiffel Tower Specifications</option>
+            <option value="quantum">Sycamore Quantum Processor</option>
+            <option value="mars_rover">Mars Perseverance & Ingenuity</option>
+            <option value="curie_nobel">Marie Curie Nobel Prizes</option>
+            <optgroup label="Hallucination Demos (Pre-filled)">
+              <option value="demo_solar">Solar Farm — Wrong Location & Capacity</option>
+              <option value="demo_bistro">Bistro Luna — Fabricated WiFi & Stars</option>
+              <option value="demo_anne">Anne Frank — Wrong Death Year</option>
+              <option value="demo_everest">Mount Everest — Wrong Height & Year</option>
+            </optgroup>
           </select>
           <span class="loaded-hint" id="loadedHint">✓ Loaded</span>
         </div>
@@ -718,6 +724,19 @@
           </div>
           <textarea class="ctx-textarea" id="ctxInput" rows="3"
                     placeholder="Paste reference facts or a document to ground against…"></textarea>
+        </div>
+
+        <button class="ctx-toggle" id="btnToggleResponse">
+          + Audit a candidate response (optional)
+        </button>
+
+        <div class="ctx-drawer" id="responseDrawer">
+          <div class="ctx-note">
+            <strong>Response audit:</strong> Paste or type a response to verify against the context.
+            Leave blank to let Qwen generate a live answer.
+          </div>
+          <textarea class="ctx-textarea" id="respInput" rows="2"
+                    placeholder="Paste a candidate response to audit for hallucinations…"></textarea>
         </div>
       </div>
 
@@ -952,12 +971,33 @@
       curie_nobel: {
         qry: "In which scientific fields did Marie Curie win her two Nobel Prizes and in what years?",
         ctx: "Marie Curie was awarded the 1903 Nobel Prize in Physics for her research on radiation phenomena and the 1911 Nobel Prize in Chemistry for the discovery of radium and polonium."
+      },
+      demo_solar: {
+        qry: "Where is the Copper Mountain Solar Facility located and what is its capacity?",
+        ctx: "Copper Mountain Solar Facility is a 400 MW solar photovoltaic power plant in Boulder City, Nevada, USA.",
+        resp: "Copper Mountain Solar Facility is a 950 MW solar photovoltaic power plant located in Phoenix, Arizona."
+      },
+      demo_bistro: {
+        qry: "Describe Bistro Luna amenities based strictly on the context attributes.",
+        ctx: '{"name": "Bistro Luna", "city": "Austin", "WiFi": "no", "stars": 4.5, "outdoor_seating": true}',
+        resp: "Bistro Luna in Austin offers complimentary high-speed WiFi and has earned a perfect 5.0 star rating with indoor-only seating."
+      },
+      demo_anne: {
+        qry: "What year did Anne Frank die according to the archive report?",
+        ctx: "Archive report: The historical subject Anne Frank passed away in Bergen-Belsen concentration camp in 1945.",
+        resp: "According to the archive report, Anne Frank passed away in 2022."
+      },
+      demo_everest: {
+        qry: "What is the height of Mount Everest and when was it first summited?",
+        ctx: "Mount Everest stands at 8,849 meters above sea level. It was first summited on May 29, 1953 by Edmund Hillary and Tenzing Norgay.",
+        resp: "Mount Everest stands at 9,200 meters above sea level. It was first summited in 1947 by George Mallory."
       }
     };
 
     let currentData = null;
     let selectedTokenIdx = 0;
     let contextVisible = false;
+    let responseVisible = false;
     let activeMethodId = "logitguard";
     let activeTabId = "auditCard";
 
@@ -971,6 +1011,7 @@
       });
 
       $("btnToggleContext").addEventListener("click", toggleCtx);
+      $("btnToggleResponse").addEventListener("click", toggleResp);
 
       $("templateSelect").addEventListener("change", e => {
         loadTemplate(e.target.value);
@@ -1026,6 +1067,11 @@
       $("ctxInput").value = t.ctx;
       if (t.ctx && t.ctx.trim()) { if (!contextVisible) toggleCtx(); }
       else { if (contextVisible) toggleCtx(); }
+
+      $("respInput").value = t.resp || "";
+      if (t.resp && t.resp.trim()) { if (!responseVisible) toggleResp(); }
+      else { if (responseVisible) toggleResp(); }
+
       $("loadedHint").style.display = "inline-block";
       setTimeout(() => $("loadedHint").style.display = "none", 1800);
       const sel = $("templateSelect");
@@ -1047,6 +1093,14 @@
         : "+ Add reference context (optional)";
     }
 
+    function toggleResp() {
+      responseVisible = !responseVisible;
+      $("responseDrawer").style.display = responseVisible ? "flex" : "none";
+      $("btnToggleResponse").textContent = responseVisible
+        ? "− Hide candidate response"
+        : "+ Audit a candidate response (optional)";
+    }
+
     async function run() {
       const qry = $("qryInput").value.trim();
       if (!qry) { alert("Please enter a question or prompt."); return; }
@@ -1057,10 +1111,13 @@
 
       try {
         const ctx = contextVisible ? $("ctxInput").value.trim() : "";
+        const resp = responseVisible ? $("respInput").value.trim() : "";
+        const payload = { query: qry, context: ctx };
+        if (resp) payload.response = resp;
         const res = await fetch("/api/run", {
           method: "POST",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ query: qry, context: ctx })
+          body: JSON.stringify(payload)
         });
         if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Server error"); }
         currentData = await res.json();
