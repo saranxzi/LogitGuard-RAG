@@ -97,6 +97,20 @@ def analyze_tokens(
 
         token_chars = response_text[adj_start:adj_end]
 
+        # Separator inside a number ("1,420", "540.2", "10:30") belongs to the numeric anchor
+        if all(ch in ".,:/-" for ch in token_chars) and any(
+            ns < adj_start and adj_end < ne for ns, ne, _ in num_intervals
+        ):
+            token_meta.append(
+                {
+                    "is_anchor": True,
+                    "is_punct": False,
+                    "is_ws": False,
+                    "entity_type": "REGEX:NUM",
+                }
+            )
+            continue
+
         # Punctuation token
         if all(ch in UNICODE_PUNCTUATION for ch in token_chars):
             token_meta.append(

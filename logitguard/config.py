@@ -4,7 +4,7 @@ Loads config.yaml, resolves relative paths against the project root,
 and validates parameters against allowable schema values.
 """
 
-import os
+import copy
 from pathlib import Path
 from typing import Dict, Any
 import yaml
@@ -12,8 +12,8 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "model_name": "Qwen/Qwen2.5-3B-Instruct",
-    "fallback_model_name": "Qwen/Qwen2.5-1.5B-Instruct",
+    "model_name": "Qwen/Qwen2.5-1.5B-Instruct",
+    "fallback_model_name": "Qwen/Qwen2.5-0.5B-Instruct",
     "dtype": "float16",
     "attn_implementation": "sdpa",
     "max_tokens": 3072,
@@ -25,7 +25,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "weights": {"entity": 1.0, "other": 0.1},
     "max_span_gap": 2,
     "max_span_tokens": 32,
-    "tau": 0.62,
+    "tau": 0.58,
     "paths": {
         "raw_dir": "data/raw",
         "clean_data": "data/ragtruth_clean.jsonl",
@@ -39,7 +39,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
 }
 
-VALID_VARIANTS = {"core", "ccla", "contrastive", "entropy", "margin", "surprisal", "surprisal_margin"}
+VALID_VARIANTS = {"core", "ccla", "contrastive", "entropy", "margin", "min_prob", "surprisal", "surprisal_margin"}
 VALID_MASK_MODES = {"soft", "hard", "uniform"}
 
 
@@ -53,7 +53,7 @@ def load_config(config_path: str | Path | None = None) -> Dict[str, Any]:
     else:
         config_path = Path(config_path)
 
-    cfg = dict(DEFAULT_CONFIG)
+    cfg = copy.deepcopy(DEFAULT_CONFIG)
 
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:

@@ -84,6 +84,31 @@ def resolve_weights(
         raise ValueError(f"Unknown mask mode '{mode}'. Expected 'soft', 'hard', or 'uniform'.")
 
 
+def _normalize_for_match(text: str) -> str:
+    """Lowercases, drops thousands separators and keeps decimal points inside numbers."""
+    text = text.lower()
+    text = re.sub(r"(?<=\d),(?=\d{3}\b)", "", text)
+    text = re.sub(r"(?<=\d)\.(?=\d)", "\x00", text)
+    text = re.sub(r"[^\w\x00]", " ", text).replace("\x00", ".")
+    return " ".join(text.split())
+
+
+def _word_in_context(word: str, norm_ctx: str) -> bool:
+    """True when the normalized word occurs in the space-padded normalized context."""
+    w = _normalize_for_match(word)
+    if not w:
+        return True
+    if any(ch.isdigit() for ch in w):
+        # Numbers must match as whole tokens: "20" must not match inside "2020"
+        return f" {w} " in norm_ctx
+    if len(w) <= 1 or w in norm_ctx:
+        return True
+    for suffix in ("s", "es", "ed", "ing"):
+        if len(w) > 3 and w.endswith(suffix) and f" {w[: -len(suffix)]}" in norm_ctx:
+            return True
+    return False
+
+
 def compute_token_scores(
     H: np.ndarray,
     delta: np.ndarray,
@@ -94,6 +119,7 @@ def compute_token_scores(
     context_text: Optional[str] = None,
     token_texts: Optional[List[str]] = None,
     variant: str = "core",
+    word_texts: Optional[List[str]] = None,
     alpha: float = 0.25,
     beta1: float = 3.5,
     beta2: float = 1.5,
@@ -105,6 +131,7 @@ def compute_token_scores(
       - 'ccla':              Context-Contrastive Logit Attribution (Upgraded bounded RAG core)
       - 'entropy':           H_i
       - 'margin':            1.0 / (1 + Delta_i)
+      - 'min_prob':          1 - P(y_i)
       - 'surprisal':         s_i = -log P(y_actual)
       - 'surprisal_margin':  s_i / (1 + Delta_i)
     """
@@ -142,31 +169,18 @@ def compute_token_scores(
 
         indicator = np.zeros(len(H), dtype=np.float32)
         if context_text and context_text.strip() and token_texts is not None:
-            clean_ctx = " " + " ".join(re.sub(r"[^\w\s]", " ", context_text.lower()).split()) + " "
+            norm_ctx = " " + _normalize_for_match(context_text) + " "
+            # match_i is evaluated on the enclosing word, not the subword (paper Sec. III-G):
+            # Qwen splits "2019" into single digits, and "2" is in almost any context.
+            match_texts = word_texts if word_texts is not None else token_texts
             for i in range(len(H)):
                 is_anc = bool(is_anchor[i]) if is_anchor is not None and len(is_anchor) > i else False
-                tok_str = token_texts[i] if len(token_texts) > i else ""
-                clean_tok = re.sub(r"[^\w]", "", tok_str.lower())
+                if not is_anc:
+                    continue
+                word = match_texts[i] if len(match_texts) > i else ""
                 cpr_val = float(cpr_arr[i])
                 s_val = float(s_arr[i])
-
-                has_lex = False
-                if len(clean_tok) <= 1 and not clean_tok.isdigit():
-                    has_lex = True
-                elif clean_tok.isdigit():
-                    has_lex = bool(clean_tok in clean_ctx)
-                elif len(clean_tok) >= 2 and clean_tok in clean_ctx:
-                    has_lex = True
-                elif f" {clean_tok} " in clean_ctx:
-                    has_lex = True
-                elif len(clean_tok) > 3 and (
-                    f" {clean_tok.rstrip('s')} " in clean_ctx
-                    or f" {clean_tok.rstrip('ed')} " in clean_ctx
-                    or f" {clean_tok.rstrip('ing')} " in clean_ctx
-                ):
-                    has_lex = True
-
-                if is_anc and (not has_lex) and cpr_val <= 0.35 and (s_val >= 4.0 or cpr_val <= -0.1):
+                if (not _word_in_context(word, norm_ctx)) and cpr_val <= 0.35 and (s_val >= 4.0 or cpr_val <= -0.1):
                     indicator[i] = 1.0
 
         z = beta1 * (u_raw - 0.5) - beta2 * np.tanh(cpr_arr) + beta3 * indicator
@@ -174,6 +188,15 @@ def compute_token_scores(
         return u_ctx.astype(np.float32)
     elif variant == "entropy":
         return H
+    elif variant == "min_prob":
+        # 1 - P(y_i); the span max of this is 1 - (minimum token probability in the span)
+        if realized_prob is not None:
+            p_tok = np.asarray(realized_prob, dtype=np.float32)
+        elif surprisal is not None:
+            p_tok = np.exp(-np.clip(np.asarray(surprisal, dtype=np.float32), 0.0, 50.0))
+        else:
+            raise ValueError("realized_prob or surprisal required for variant='min_prob'")
+        return (1.0 - np.clip(p_tok, 0.0, 1.0)).astype(np.float32)
     elif variant == "margin":
         return 1.0 / (1.0 + delta_safe)
     elif variant == "surprisal":
@@ -188,7 +211,7 @@ def compute_token_scores(
         return np.maximum(0.0, s) / (1.0 + delta_safe)
     else:
         raise ValueError(
-            f"Unknown variant '{variant}'. Expected 'core', 'ccla', 'entropy', 'margin', 'surprisal', or 'surprisal_margin'."
+            f"Unknown variant '{variant}'. Expected 'core', 'ccla', 'entropy', 'margin', 'min_prob', 'surprisal', or 'surprisal_margin'."
         )
 
 
@@ -197,6 +220,7 @@ def compute_span_scores(
     weights: np.ndarray,
     spans: List[Tuple[int, int, int, int]],  # (tok_start, tok_end, char_start, char_end)
     agg: str = "mean",
+    clip: bool = False,  # Eq. 12 clips probability-valued (CCLA) span scores to [0, 1]
 ) -> List[float]:
     """
     Equation 5: Entity-Mask Weighted Span Uncertainty
@@ -230,7 +254,8 @@ def compute_span_scores(
             max_score = float(np.max(w_s * u_s)) if len(u_s) > 0 else 0.0
             onset_score = float(w_s[0] * u_s[0]) if len(u_s) > 0 else 0.0
             hybrid_score = 0.65 * max_score + 0.35 * onset_score
-            scores.append(max(max_score * 0.92, hybrid_score))
+            hybrid_final = max(max_score * 0.92, hybrid_score)
+            scores.append(float(np.clip(hybrid_final, 0.0, 1.0)) if clip else hybrid_final)
         else:
             scores.append(mean_score)
     return scores
