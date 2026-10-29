@@ -18,10 +18,16 @@ import time
 import urllib.request
 import urllib.parse
 import json
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Set, Tuple
 
 # In-memory cache for online queries to prevent redundant network requests
 _EVIDENCE_CACHE: Dict[str, str] = {}
+_TERM_CACHE: Dict[str, str] = {}
+
+# When Wikipedia is unreachable, skip further lookups for this long instead of
+# paying the network timeout on every claim (e.g. offline demo machines).
+_OFFLINE_BACKOFF_S = 300.0
+_offline_until = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -50,14 +56,16 @@ def audit_ground_truth(
     t0 = time.perf_counter()
 
     claims = _extract_substantive_claims(response)
-    if not claims:
+    if not claims and not gold_spans:
         return _empty_audit(method_results)
 
     has_context = bool(context and context.strip())
     domain_label = "context" if has_context else "open-domain"
 
-    # Step 1: If explicit human-annotated gold spans are provided, use them directly
-    if gold_spans:
+    # Step 1: If human annotations are provided, use them directly. An empty list is an
+    # annotation too ("nothing hallucinated"); only None means "not annotated".
+    if gold_spans is not None:
+        claims = _add_uncovered_gold_claims(claims, gold_spans, response)
         for claim in claims:
             is_gold_hal = any(_spans_overlap(claim, gs) for gs in gold_spans)
             if is_gold_hal:
@@ -116,7 +124,7 @@ TRIVIAL_ORDINALS = {"first", "second", "third", "fourth", "fifth", "last", "one"
 
 # Universal structural key regex: matches Markdown or plain text keys before a colon
 _STRUCTURAL_LABEL_RE = re.compile(
-    r"(?:^|\n|\r|[\•\-\*]\s+|\*\*)\s*([A-Za-z0-9][A-Za-z0-9\s\/\_\-]{0,30}?)\s*(?:\*\* select|\*\*)?\s*:",
+    r"(?:^|\n|\r|[\•\-\*]\s+|\*\*)\s*([A-Za-z0-9][A-Za-z0-9\s\/\_\-]{0,30}?)\s*(?:\*\*)?\s*:",
     re.MULTILINE,
 )
 
@@ -181,7 +189,6 @@ def _extract_substantive_claims(response: str) -> List[Dict[str, Any]]:
     doc = nlp(response)
     claims = []
     seen_intervals: List[Tuple[int, int]] = []
-    seen_texts: Set[str] = set()
 
     # 1. Named Entities from spaCy
     for ent in doc.ents:
@@ -198,12 +205,8 @@ def _extract_substantive_claims(response: str) -> List[Dict[str, Any]]:
             continue
         if _overlaps_any(cs, ce, seen_intervals):
             continue
-        norm_key = raw_text.lower()
-        if norm_key in seen_texts:
-            continue
 
         seen_intervals.append((cs, ce))
-        seen_texts.add(norm_key)
         claims.append({
             "text": raw_text,
             "char_start": cs,
@@ -218,12 +221,10 @@ def _extract_substantive_claims(response: str) -> List[Dict[str, Any]]:
     for m in re.finditer(r"\b\d+(?:[.,:/-]\d+)*%?\b", response):
         raw_num = m.group(0)
         cs, ce = m.start(), m.end()
-        norm_num = raw_num.lower()
-        if len(raw_num) < 2 or _overlaps_any(cs, ce, seen_intervals) or norm_num in seen_texts:
+        if len(raw_num) < 2 or _overlaps_any(cs, ce, seen_intervals):
             continue
 
         seen_intervals.append((cs, ce))
-        seen_texts.add(norm_num)
         claims.append({
             "text": raw_num,
             "char_start": cs,
@@ -236,6 +237,29 @@ def _extract_substantive_claims(response: str) -> List[Dict[str, Any]]:
 
     claims.sort(key=lambda c: c["char_start"])
     return claims
+
+
+def _add_uncovered_gold_claims(
+    claims: List[Dict[str, Any]], gold_spans: List[Dict[str, Any]], response: str
+) -> List[Dict[str, Any]]:
+    """Adds each annotated span that overlaps no extracted claim as a claim of its own."""
+    out = list(claims)
+    for gs in gold_spans:
+        gs_start = gs.get("char_start", gs.get("start", 0))
+        gs_end = gs.get("char_end", gs.get("end", 0))
+        if gs_end <= gs_start or any(_spans_overlap(c, gs) for c in out):
+            continue
+        out.append({
+            "text": response[gs_start:gs_end].strip() or gs.get("text", ""),
+            "char_start": gs_start,
+            "char_end": gs_end,
+            "type": "GOLD_SPAN",
+            "status": "UNVERIFIED",
+            "severity": "grounded",
+            "evidence": "",
+        })
+    out.sort(key=lambda c: c["char_start"])
+    return out
 
 
 def _overlaps_any(start: int, end: int, intervals: List[Tuple[int, int]]) -> bool:
@@ -262,12 +286,19 @@ def _fetch_authoritative_evidence(query: str, response: str) -> str:
             if evidence_text:
                 break
 
-    _EVIDENCE_CACHE[search_q] = evidence_text
+    if evidence_text:
+        _EVIDENCE_CACHE[search_q] = evidence_text
     return evidence_text
 
 
 def _query_wikipedia_api(term: str) -> str:
+    global _offline_until
     if not term or not term.strip():
+        return ""
+    key = term.strip().lower()
+    if key in _TERM_CACHE:
+        return _TERM_CACHE[key]
+    if time.time() < _offline_until:
         return ""
     encoded = urllib.parse.quote_plus(term.strip())
     url = (
@@ -288,8 +319,11 @@ def _query_wikipedia_api(term: str) -> str:
                 extract = p.get("extract", "")
                 if extract:
                     snippets.append(f"[{title}]: {extract}")
-            return "\n".join(snippets)
+            result = "\n".join(snippets)
+            _TERM_CACHE[key] = result
+            return result
     except Exception:
+        _offline_until = time.time() + _OFFLINE_BACKOFF_S
         return ""
 
 
@@ -310,7 +344,7 @@ def _extract_fallback_entities(query: str, response: str) -> List[str]:
 # SelfCheck Multi-Sample Generation
 # ---------------------------------------------------------------------------
 
-def _generate_samples(model, tokenizer, query: str, context: str, n: int = 2) -> List[str]:
+def _generate_samples(model, tokenizer, query: str, context: str, n: int = 2, seed: int = 42) -> List[str]:
     """Generates N alternative sampled generations from the model."""
     import torch
 
@@ -329,6 +363,7 @@ def _generate_samples(model, tokenizer, query: str, context: str, n: int = 2) ->
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
 
     samples = []
+    torch.manual_seed(seed)
     with torch.no_grad():
         for _ in range(n):
             out = model.generate(
@@ -380,7 +415,7 @@ def _verify_open_domain_consensus(
         # Check 1b: Targeted claim lookup if general query snippet didn't contain term
         if not has_online_fact and len(term) >= 3 and not term.isdigit():
             term_evidence = _query_wikipedia_api(term)
-            if term_evidence and (_contains_claim(term, term_evidence) or any(t.lower() in term_evidence.lower() for t in term.split() if len(t) > 3)):
+            if term_evidence and _contains_claim(term, term_evidence):
                 has_online_fact = True
                 online_evidence += "\n" + term_evidence
 
@@ -408,8 +443,26 @@ def _verify_open_domain_consensus(
             claim["evidence"] = "Unverified Assertion: Absent from reference encyclopedia summary, but not actively disproven."
 
 
+_NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def _numbers_in(text: str) -> Set[str]:
+    """Numbers with thousands separators removed and decimals kept ("9,200" -> "9200", "4.5" -> "4.5")."""
+    out = set()
+    for m in _NUMBER_RE.finditer(text):
+        num = re.sub(r",(?=\d{3}(?:\D|$))", "", m.group(0)).rstrip(".,")
+        out.add(num)
+    return out
+
+
 def _contains_claim(claim_text: str, source_text: str) -> bool:
     """Robust normalized token matching insensitive to punctuation, plurals, and conversational wrappers."""
+    # Numeric values must match exactly as numbers: "5.0" is not supported by "4.5",
+    # and "9,200" is not supported by "8,849".
+    claim_nums = _numbers_in(claim_text)
+    if claim_nums and not claim_nums <= _numbers_in(source_text):
+        return False
+
     clean_claim = re.sub(r"[^\w\s]", " ", claim_text.lower())
     clean_src = " " + " ".join(re.sub(r"[^\w\s]", " ", source_text.lower()).split()) + " "
 
@@ -438,7 +491,7 @@ def _contains_claim(claim_text: str, source_text: str) -> bool:
     all_tokens = [w for w in clean_claim.split() if len(w) > 1]
 
     if not key_tokens:
-        return all(_token_matches(t, clean_src) for t in all_tokens)
+        return bool(all_tokens) and all(_token_matches(t, clean_src) for t in all_tokens)
 
     return all(_token_matches(tok, clean_src) for tok in key_tokens)
 
@@ -514,14 +567,7 @@ def _spans_overlap(claim: Dict[str, Any], span: Dict[str, Any]) -> bool:
     cs, ce = claim.get("char_start", 0), claim.get("char_end", 0)
     ss = span.get("char_start", span.get("start", 0))
     se = span.get("char_end", span.get("end", 0))
-    if max(cs, ss) < min(ce, se):
-        return True
-    c_text = claim.get("text", "").strip().lower()
-    s_text = span.get("text", "").strip().lower()
-    if c_text and s_text and len(c_text) > 1 and len(s_text) > 1:
-        if c_text == s_text or c_text in s_text or s_text in c_text:
-            return True
-    return False
+    return max(cs, ss) < min(ce, se)
 
 
 def _format_assessment(m_id: str, tp: int, fp: int, tn: int, fn: int, p: float, r: float) -> str:
