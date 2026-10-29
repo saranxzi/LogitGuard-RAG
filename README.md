@@ -5,8 +5,6 @@ Subword-Aware Context-Contrastive Logit Attribution for Real-Time Hallucination 
 Saran Sharma and Atharv Sharma  
 Vellore Institute of Technology, Chennai, India
 
-Paper: docs/RESEARCH_PAPER.md
-
 ---
 
 ## Overview
@@ -83,9 +81,6 @@ logitguard/
 ├── config.yaml              # Configuration and thresholds
 ├── requirements.txt         # Dependencies
 ├── run_benchmark.py         # Benchmark runner
-├── docs/
-│   ├── RESEARCH_PAPER.md    # Full research manuscript
-│   └── adr/                 # Architecture decision records
 ├── logitguard/
 │   ├── model.py             # GPU forward hook and model loader
 │   ├── scoring.py           # Scoring formulas and ablations
